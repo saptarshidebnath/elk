@@ -20,8 +20,8 @@ services:
         target: /usr/share/elasticsearch/data
     # Exposes ports 9200 and 9300 
     ports:
-      - "${IP4_ADDR}:9200:9200"
-      - "${IP4_ADDR}:9300:9300"
+      - "9200:9200"
+      - "9300:9300"
     environment:
       # ES_JAVA_OPTS: "-Xmx1024m -Xms512m"
       # remove the comment to the ELASTIC_PASSWORD argument to enable xpack 
@@ -31,7 +31,7 @@ services:
       discovery.type: single-node
     restart: unless-stopped  
     networks:
-      - elk
+      - elk_net
     deploy: 
       resources:
         limits:
@@ -59,7 +59,7 @@ services:
   #   environment:
   #     LS_JAVA_OPTS: "-Xmx256m -Xms256m"
   #   networks:
-  #     - elk
+  #     - elk_net
   #   restart: unless-stopped
   #   depends_on:
   #     - elasticsearch
@@ -84,13 +84,13 @@ services:
       - "${IP4_ADDR}:80:5601"
     restart: unless-stopped
     networks:
-      - elk
+      - elk_net
     depends_on:
       - elasticsearch
     deploy: 
       resources:
         limits:
-          memory: 512M
+          memory: 256M
 
   filebeat:
     container_name: ${COMPOSE_PROJECT_NAME}-filebeat
@@ -99,7 +99,6 @@ services:
       args:
         ELK_VERSION: $ELK_VERSION
     volumes:
-      # - "./filebeat/config/filebeat.docker.yml:/usr/share/filebeat/filebeat.yml:ro"
       - "/var/lib/docker/containers:/var/lib/docker/containers:ro"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     user: root
@@ -107,19 +106,41 @@ services:
       - 'strict.perms=false'
     restart: unless-stopped
     networks:
-      - elk
+      - elk_net
     depends_on:
       - elasticsearch
     deploy: 
       resources:
         limits:
-          memory: 96M
+          memory: 64M
+  
+  metricbeat:
+    container_name: ${COMPOSE_PROJECT_NAME}-metricbeat
+    build:
+      context: beats/metricbeat/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      # - "./beats/metricbeats/config/metricbeat.docker.yml:/usr/share/metricbeat/metricbeat.yml:ro"
+      - "/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "/proc:/hostfs/proc:ro"
+      # - "/:/hostfs:ro"
+    user: root
+    restart: unless-stopped
+    networks:
+      - elk_net
+    depends_on:
+      - elasticsearch
+    deploy: 
+      resources:
+        limits:
+          memory: 64M  
 
 networks:
-  elk:
+  elk_net:
+    name: elk_net
     driver: bridge
 
 volumes:
   elasticsearch:
-  mytb-data:  
-  mytb-logs:
